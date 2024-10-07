@@ -1,0 +1,6 @@
+target: --github-repo-url--
+domain : domain.com
+email : example@example.com
+region : us-west-2
+aws_access_key_id : --aws-access-key-id--
+aws_secret_access_key : --aws-secret-access-key--
