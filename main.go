@@ -418,6 +418,7 @@ func PollForIpPoint(domain string, ipAddr string) bool {
 
 	for {
 		ip, err := net.LookupHost(domain)
+
 		if err != nil {
 			fmt.Printf("Error looking up host: %v\n", err)
 			return false
