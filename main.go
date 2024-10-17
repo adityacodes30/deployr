@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,6 +23,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/miekg/dns"
 )
 
 func keygen() (string, string) {
@@ -261,19 +265,18 @@ region = %s
 
 	instanceId := resp.Instances[0].InstanceId
 
-	fmt.Println(*instanceId)
+	fmt.Println("Instance id of provisiond response --> " + *instanceId)
 
 	instancePubDns, instancePubIp, _ := GetPublicDNSByInstanceID(svc, *instanceId)
 
-	fmt.Printf(` ---------------
-	Please point your ip to 
-	%s`, instancePubDns)
+	fmt.Printf("\033[32m"+`
+  ---------------------------
+  Please point your IP to:
+	%s
+  ---------------------------
+`+"\033[0m", instancePubIp)
 
-	domainPoint := PollForIpPoint(deployrcfg.Domain, instancePubIp)
-
-	if !domainPoint {
-		log.Fatal("couldnt point domain ")
-	}
+	resolveConfimation(deployrcfg.Domain, instancePubIp)
 
 	fmt.Println("the public dns is ")
 	fmt.Println(instancePubDns)
@@ -304,15 +307,7 @@ region = %s
 		log.Fatal(erroricsvc.Error())
 	}
 
-	fmt.Println("resppp sucess -------")
-
 	fmt.Println(respp.Success)
-
-	sshString := "ssh -i ./.deployr/key ec2-user@" + instancePubDns
-	sshString2 := "ssh -i ./.deployr/key -p 22 ec2-user@" + instancePubDns
-
-	fmt.Println(sshString)
-	fmt.Println(sshString2)
 
 	pkey, err := ioutil.ReadFile("./.deployr/key")
 
@@ -415,17 +410,17 @@ func addHostToKnownHosts(host string, key ssh.PublicKey) error {
 
 func PollForIpPoint(domain string, ipAddr string) bool {
 	counter := 0
+	dnsResolver := "8.8.8.8:53"
 
 	for {
-		ip, err := net.LookupHost(domain)
-
+		ip, err := resolveWithDNS(domain, dnsResolver)
 		if err != nil {
 			fmt.Printf("Error looking up host: %v\n", err)
 			return false
 		}
 
-		// Check if the resolved IP matches the given IP address
 		if len(ip) > 0 && ip[0] == ipAddr {
+			fmt.Println("Domain resolved to the correct IP!")
 			return true
 		}
 
@@ -438,4 +433,51 @@ func PollForIpPoint(domain string, ipAddr string) bool {
 		fmt.Println("Waiting for public DNS to be propagated...")
 		time.Sleep(20 * time.Second)
 	}
+}
+
+func resolveWithDNS(domain string, resolver string) ([]string, error) {
+	c := dns.Client{}
+	m := dns.Msg{}
+	m.SetQuestion(dns.Fqdn(domain), dns.TypeA)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, _, err := c.ExchangeContext(ctx, &m, resolver)
+	if err != nil {
+		return nil, err
+	}
+
+	var ips []string
+	for _, ans := range resp.Answer {
+		if a, ok := ans.(*dns.A); ok {
+			ips = append(ips, a.A.String())
+		}
+	}
+	return ips, nil
+}
+
+func resolveConfimation(domain string, ip string) {
+
+	fmt.Print("\n\033[32mPlease type 'confirm' if your DNS has propagated:\033[0m\n\n")
+	fmt.Printf("You can check that by if the IP on this website matches --> \033[33m%s\033[0m\n \n", ip)
+	fmt.Printf("Paste this in your browser --> \033[34m: https://www.nslookup.io/domains/%s/dns-records/\033[0m\n", domain)
+	fmt.Printf("\033[34m\033]8;;https://www.nslookup.io/domains/%s/dns-records/\033\\Or Click here to directly go to the website\033]8;;\033\\\033[0m\n\n", domain)
+
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Print("> ") // Prompt for input
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if strings.ToLower(input) == "confirm" {
+			fmt.Println("DNS propagation confirmed. Proceeding...")
+			break
+		} else {
+			fmt.Println("Invalid input. Please type 'confirm'.")
+		}
+	}
+
+	time.Sleep(10 * time.Second)
 }
