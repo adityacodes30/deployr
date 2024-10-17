@@ -2,13 +2,14 @@
 
 Deployr helps you host your Next.js application on your own aws ec2 instance, With just a few clicks, you can set up everything, from machine provisioning to serving your next application on your own domain.
 
+Here is a video walkthrough / how to use Deployr: [Deployr Walkthrough]()
+
 ---
 
 # How to Deployr Your App 🚀
 
 Application is in active development. Upon stable release a cli and platform specific binaries will be released. Meanwhile use these steps to contribute /setup the projects. 
 
----
 
 ### Step 1: Clone the Project  
 Start by cloning the Deployr repository to your local machine:
