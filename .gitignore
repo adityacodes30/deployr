@@ -5,3 +5,11 @@ main
 temp.txt
 
 .deployr/
+
+deployr-linux-amd64
+deployr-linux-arm64
+deployr-windows-amd64.exe
+deployr-windows-arm64.exe
+deployr-macos-amd64
+deployr-macos-arm64
+

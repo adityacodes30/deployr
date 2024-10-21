@@ -1,20 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,162 +18,46 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2instanceconnect"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/miekg/dns"
+	"github.com/adityacodes30/deployr/utils"
 )
-
-func keygen() (string, string) {
-	savePrivateFileTo := "./.deployr/key"
-	savePublicFileTo := "./.deployr/key.pub"
-	bitSize := 4096
-
-	err := os.MkdirAll("./.deployr", 0755)
-	if err != nil {
-		log.Fatal("Failed to create .deployr directory: ", err)
-	}
-
-	privateKey, err := generatePrivateKey(bitSize)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	publicKeyBytes, err := generatePublicKey(&privateKey.PublicKey)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	privateKeyBytes := encodePrivateKeyToPEM(privateKey)
-
-	err = writeKeyToFile(privateKeyBytes, savePrivateFileTo)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	err = writeKeyToFile([]byte(publicKeyBytes), savePublicFileTo)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	// fmt.Println("public key " + string(publicKeyBytes))
-	// fmt.Println("private key " + string(privateKeyBytes))
-
-	return string(publicKeyBytes), string(privateKeyBytes)
-}
-
-// generatePrivateKey creates a RSA Private Key of specified byte size
-func generatePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
-	// Private Key generation
-	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
-	if err != nil {
-		return nil, err
-	}
-
-	// Validate Private Key
-	err = privateKey.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	log.Println("Private Key generated")
-	return privateKey, nil
-}
-
-// encodePrivateKeyToPEM encodes Private Key from RSA to PEM format
-func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
-	// Get ASN.1 DER format
-	privDER := x509.MarshalPKCS1PrivateKey(privateKey)
-
-	// pem.Block
-	privBlock := pem.Block{
-		Type:    "RSA PRIVATE KEY",
-		Headers: nil,
-		Bytes:   privDER,
-	}
-
-	// Private key in PEM format
-	privatePEM := pem.EncodeToMemory(&privBlock)
-
-	return privatePEM
-}
-
-// generatePublicKey take a rsa.PublicKey and return bytes suitable for writing to .pub file
-// returns in the format "ssh-rsa ..."
-func generatePublicKey(privatekey *rsa.PublicKey) ([]byte, error) {
-	publicRsaKey, err := ssh.NewPublicKey(privatekey)
-	if err != nil {
-		return nil, err
-	}
-
-	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
-
-	log.Println("Public key generated")
-	return pubKeyBytes, nil
-}
-
-// writePemToFile writes keys to a file
-func writeKeyToFile(keyBytes []byte, saveFileTo string) error {
-	err := ioutil.WriteFile(saveFileTo, keyBytes, 0600)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("Key saved to: %s", saveFileTo)
-	return nil
-}
 
 func main() {
 
-	DeployrConfig()
-
-	err := os.MkdirAll(os.Getenv("HOME")+"/.aws", 0755)
-
-	if err != nil {
-		fmt.Println("error while making dr")
-		log.Fatal("Error occored")
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: deployr <config.yml>")
+		os.Exit(1)
 	}
 
-	filePath := os.Getenv("HOME") + "/.aws/credentials"
-	file, err := os.Create(filePath)
-	if err != nil {
-		fmt.Println("error while making file")
-		log.Fatal(err)
-	}
-	defer file.Close()
+	configFilePath := os.Args[1]
 
-	credentialsFileContent := fmt.Sprintf(`[deployr]
-aws_access_key_id = %s
-aws_secret_access_key = %s`, deployrcfg.AwsAcess, deployrcfg.AwsSecret)
-
-	_, err = file.WriteString(credentialsFileContent)
-	if err != nil {
-		fmt.Println("error while writing to file")
-		log.Fatal(err)
+	if configFilePath == "-v" {
+		fmt.Println("Deployr on v1.0")
+		return
 	}
 
-	// Create config file
-	configPath := os.Getenv("HOME") + "/.aws/config"
-	configFile, err := os.Create(configPath)
+	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Println("Error while creating config file:", err)
-		log.Fatal(err)
-	}
-	defer configFile.Close()
-
-	configfilecontent := fmt.Sprintf(`[profile deployr]
-region = %s
-`, deployrcfg.Region)
-
-	// Write region to config file
-	_, err = configFile.WriteString(configfilecontent)
-	if err != nil {
-		fmt.Println("Error while writing to config file:", err)
-		log.Fatal(err)
+		fmt.Println("Error getting current working directory:", err)
+		os.Exit(1)
 	}
 
-	cfg, erre := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("deployr"))
+	if !filepath.IsAbs(configFilePath) {
+		configFilePath = filepath.Join(cwd, configFilePath)
+	}
 
-	if erre != nil {
-		fmt.Println("error while writing loading config")
-		log.Fatal(err)
+	fmt.Println("Using config file at:", configFilePath)
+
+	var deployrcfg utils.AppCfg
+
+	utils.DeployrConfig(configFilePath, &deployrcfg)
+
+	utils.AwsCfg(deployrcfg)
+
+	cfg, cfgErr := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile("deployr"))
+
+	if cfgErr != nil {
+		fmt.Println("Error while loading aws config")
+		log.Fatal(cfgErr)
 	}
 
 	fmt.Println("credentials ok")
@@ -187,7 +65,6 @@ region = %s
 	svc := ec2.NewFromConfig(cfg)
 
 	// create security group
-
 	createGroupOutput, err := svc.CreateSecurityGroup(context.TODO(), &ec2.CreateSecurityGroupInput{
 		GroupName:   aws.String("deployr-sg"),
 		Description: aws.String("Security group for deployr instance with SSH, HTTP, and HTTPS access"),
@@ -199,7 +76,7 @@ region = %s
 	securityGroupID := aws.ToString(createGroupOutput.GroupId)
 	fmt.Printf("Created security group with ID: %s\n", securityGroupID)
 
-	// Authorize inbound rules
+	// Inbound rules
 	_, err = svc.AuthorizeSecurityGroupIngress(context.TODO(), &ec2.AuthorizeSecurityGroupIngressInput{
 		GroupId: aws.String(securityGroupID),
 		IpPermissions: []types.IpPermission{
@@ -242,7 +119,7 @@ region = %s
 		log.Fatalf("Failed to add security group rules: %v", err)
 	}
 
-	resp, instanceErr := svc.RunInstances(context.TODO(),
+	runInstanceResp, instanceErr := svc.RunInstances(context.TODO(),
 		&ec2.RunInstancesInput{
 			ImageId:      aws.String(deployrcfg.Ami),
 			InstanceType: types.InstanceTypeT2Micro,
@@ -263,9 +140,18 @@ region = %s
 		},
 	)
 
-	instanceId := resp.Instances[0].InstanceId
+	if instanceErr != nil {
+		fmt.Println("error while running instance")
+		log.Fatal(instanceErr.Error())
+	}
 
-	fmt.Println("Instance id of provisiond response --> " + *instanceId)
+	if runInstanceResp == nil {
+		log.Fatal("RunInstances response is nil")
+	}
+
+	instanceId := runInstanceResp.Instances[0].InstanceId
+
+	fmt.Println("Instance was provisioned sucessfully\nInstance id of provisiond response --> " + *instanceId)
 
 	instancePubDns, instancePubIp, _ := GetPublicDNSByInstanceID(svc, *instanceId)
 
@@ -276,25 +162,13 @@ region = %s
   ---------------------------
 `+"\033[0m", instancePubIp)
 
-	resolveConfimation(deployrcfg.Domain, instancePubIp)
-
-	fmt.Println("the public dns is ")
-	fmt.Println(instancePubDns)
-
-	if instanceErr != nil {
-		fmt.Println("error while running instance")
-		log.Fatal(instanceErr.Error())
-	}
-
-	if resp == nil {
-		log.Fatal("RunInstances response is nil")
-	}
+	utils.ResolveConfimation(deployrcfg.Domain, instancePubIp)
 
 	time.Sleep(10 * time.Second)
 
 	icsvc := ec2instanceconnect.NewFromConfig(cfg)
 
-	pubkey, _ := keygen()
+	pubkey, _, privKeyPath := utils.Keygen()
 
 	respp, erroricsvc := icsvc.SendSSHPublicKey(context.TODO(), &ec2instanceconnect.SendSSHPublicKeyInput{
 		InstanceId:     instanceId,
@@ -307,9 +181,9 @@ region = %s
 		log.Fatal(erroricsvc.Error())
 	}
 
-	fmt.Println(respp.Success)
+	fmt.Println("Shh key sent: ", respp.Success)
 
-	pkey, err := ioutil.ReadFile("./.deployr/key")
+	pkey, err := ioutil.ReadFile(privKeyPath)
 
 	signer, signError := ssh.ParsePrivateKey([]byte(pkey))
 
@@ -328,7 +202,7 @@ region = %s
 			fmt.Printf("Connected to host %s. Fingerprint: %s\n",
 				hostname, ssh.FingerprintSHA256(key))
 
-			if err := addHostToKnownHosts(hostname, key); err != nil {
+			if err := utils.AddHostToKnownHosts(hostname, key); err != nil {
 				return fmt.Errorf("failed to add host to known_hosts: %w", err)
 			}
 
@@ -350,9 +224,6 @@ region = %s
 	}
 	defer session.Close()
 
-	// Once a Session is created, you can execute a single command on
-	// the remote side using the Run method.
-
 	command := fmt.Sprintf(`sudo sh -c 'if [ ! -d /.deployr ]; then mkdir /.deployr; fi && curl -o /.deployr/deployr.sh https://gist.githubusercontent.com/adityacodes30/68f9887074b0e203e0986ae03a00d842/raw/95743327ad67cfae66e979ecbf794defbd903294/gistfile1.sh && sudo chmod +x /.deployr/deployr.sh && sudo /bin/bash /.deployr/deployr.sh %s %s %s'`, deployrcfg.Target, deployrcfg.Domain, deployrcfg.Email)
 	var b bytes.Buffer
 	session.Stdout = &b
@@ -361,6 +232,22 @@ region = %s
 	}
 	fmt.Println(b.String())
 
+	fmt.Printf("\033[32m"+`
+╭──────────────────────────────────────────────────────────╮
+│                   Congratulations! 🎉                     │
+│                                                          │
+│ Your app is deployed on https://%s                       │
+│                                                          │
+│ Do not worry if you do not see your application up      │
+│ instantly, it might be building. It also takes some time │
+│ for DNS and SSL certificates to propagate across the     │
+│ global network. Please be patient.                       │
+│                                                          │
+│ If you do not see it deployed even after a few hours,   │
+│ please paste the logs you got above at:                 │
+│ https://github.com/adityacodes30/deployr/issues         │
+╰──────────────────────────────────────────────────────────╯
+`+"\033[0m", deployrcfg.Domain)
 }
 
 func GetPublicDNSByInstanceID(ec2Client *ec2.Client, instanceID string) (string, string, error) {
@@ -393,91 +280,4 @@ func GetPublicDNSByInstanceID(ec2Client *ec2.Client, instanceID string) (string,
 		fmt.Println("waiting for public dns to be assigned")
 		time.Sleep(2 * time.Second)
 	}
-}
-
-func addHostToKnownHosts(host string, key ssh.PublicKey) error {
-	knownHostsPath := os.Getenv("HOME") + "/.ssh/known_hosts"
-
-	// Create the formatted host key entry
-	hostKeyEntry := fmt.Sprintf("%s %s %s\n",
-		host,
-		key.Type(),
-		base64.StdEncoding.EncodeToString(key.Marshal()))
-
-	// Append the host key to the known_hosts file
-	return ioutil.WriteFile(knownHostsPath, []byte(hostKeyEntry), 0644)
-}
-
-func PollForIpPoint(domain string, ipAddr string) bool {
-	counter := 0
-	dnsResolver := "8.8.8.8:53"
-
-	for {
-		ip, err := resolveWithDNS(domain, dnsResolver)
-		if err != nil {
-			fmt.Printf("Error looking up host: %v\n", err)
-			return false
-		}
-
-		if len(ip) > 0 && ip[0] == ipAddr {
-			fmt.Println("Domain resolved to the correct IP!")
-			return true
-		}
-
-		counter++
-		if counter >= 1000 {
-			fmt.Println("Reached maximum retries. DNS propagation failed.")
-			return false
-		}
-
-		fmt.Println("Waiting for public DNS to be propagated...")
-		time.Sleep(20 * time.Second)
-	}
-}
-
-func resolveWithDNS(domain string, resolver string) ([]string, error) {
-	c := dns.Client{}
-	m := dns.Msg{}
-	m.SetQuestion(dns.Fqdn(domain), dns.TypeA)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	resp, _, err := c.ExchangeContext(ctx, &m, resolver)
-	if err != nil {
-		return nil, err
-	}
-
-	var ips []string
-	for _, ans := range resp.Answer {
-		if a, ok := ans.(*dns.A); ok {
-			ips = append(ips, a.A.String())
-		}
-	}
-	return ips, nil
-}
-
-func resolveConfimation(domain string, ip string) {
-
-	fmt.Print("\n\033[32mPlease type 'confirm' if your DNS has propagated:\033[0m\n\n")
-	fmt.Printf("You can check that by if the IP on this website matches --> \033[33m%s\033[0m\n \n", ip)
-	fmt.Printf("Paste this in your browser --> \033[34m: https://www.nslookup.io/domains/%s/dns-records/\033[0m\n", domain)
-	fmt.Printf("\033[34m\033]8;;https://www.nslookup.io/domains/%s/dns-records/\033\\Or Click here to directly go to the website\033]8;;\033\\\033[0m\n\n", domain)
-
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		fmt.Print("> ") // Prompt for input
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-
-		if strings.ToLower(input) == "confirm" {
-			fmt.Println("DNS propagation confirmed. Proceeding...")
-			break
-		} else {
-			fmt.Println("Invalid input. Please type 'confirm'.")
-		}
-	}
-
-	time.Sleep(10 * time.Second)
 }

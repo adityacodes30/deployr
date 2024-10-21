@@ -8,8 +8,100 @@ Here is a video walkthrough / how to use Deployr: [Deployr Walkthrough](https://
 
 # How to Deployr Your App 🚀
 
-Application is in active development. Upon stable release a cli and platform specific binaries will be released. Meanwhile use these steps to contribute /setup the projects. 
+v1.0.0 is here 🎉
 
+How to use Deployr to host your Next.js application on your own AWS EC2 instance:
+
+### Step 1: Download the project
+
+v1.0.0 is here 🎉
+
+
+### Step 1: Get the project:
+
+#### Linux (Intel/AMD64):
+```bash
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-linux-amd64 && sudo chmod +x /usr/local/bin/deployr
+```
+
+#### macOS (ARM/M1)
+```bash
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-macos-arm64 && sudo chmod +x /usr/local/bin/deployr
+```
+
+#### Linux (ARM64):
+```bash
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-linux-arm64 && sudo chmod +x /usr/local/bin/deployr
+```
+
+#### macOS (Intel/AMD64):
+```bash
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-macos-amd64 && sudo chmod +x /usr/local/bin/deployr
+```
+
+### Step 2: Test the installation 
+
+```bash
+deployr -v
+```
+
+You should see the version of the deployr you just installed
+
+### Step 3: Create a config.yml file 
+
+Download the `config.example.yml` file and obtain your AWS credentials and the github repo of your next app to be deployr(ed) 
+
+Sign into aws and make a IAM user with the following policy attached: 
+
+```json 
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "deployr",
+			"Effect": "Allow",
+			"Action": [
+				"ec2-instance-connect:SendSSHPublicKey",
+				"ec2:DescribeInstances",
+				"ec2:StartInstances",
+				"ec2:CreateTags",
+				"ec2:CreateSecurityGroup",
+				"ec2:AuthorizeSecurityGroupIngress",
+				"ec2:DescribeSecurityGroups",
+				"ec2:DescribeSubnets",
+				"ec2:DescribeKeyPairs",
+				"ec2:StopInstances",
+				"ec2:TerminateInstances",
+				"ec2:RebootInstances",
+				"ec2:RunInstances"
+			],
+			"Resource": "*"
+		}
+	]
+}
+```
+
+Then obtain and add the credentials of the user you just created as well as the github repo of your next app to be deployr(ed) to the config.example.yml 
+
+Then rename `config.example.yml` ---> `config.yml`
+
+Here is a short [guide](https://www.loom.com/share/cf21a3c2212b45f887e46d73544dabd6?sid=00f3bd28-689c-4480-931d-bd5c4cca247b) on how to do that 
+
+### Step 4: Run the deployr command 
+
+```bash
+deployr <path-to-config.yml>
+```
+
+### Step 5: Point your domain 
+
+You will get your public IP in your terminal, go to your domain hosting provider and point your domain to that IP 
+
+### Step 6: Your project is Deployed 
+
+You can now access your project on your domain after a few minutes ( Depending on the buildtime of your project )
+
+## If you want to build 
 
 ### Step 1: Clone the Project  
 Start by cloning the Deployr repository to your local machine:
@@ -71,7 +163,7 @@ Here is a short [guide](https://www.loom.com/share/cf21a3c2212b45f887e46d73544da
 Run the command
 
 ```bash
-go build main.go deployrconfig.go
+go build main.go 
 ```
 
 ### Step 5: Point your domain 
