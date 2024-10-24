@@ -12,11 +12,6 @@ v1.0.0 is here 🎉
 
 How to use Deployr to host your Next.js application on your own AWS EC2 instance:
 
-### Step 1: Download the project
-
-v1.0.0 is here 🎉
-
-
 ### Step 1: Get the project:
 
 #### Linux (Intel/AMD64):
@@ -195,15 +190,15 @@ V 1.0
 
 -^----Prototype Complete----^-
 
-[] **Github Actions** Create gh actions to automate the deployment process when new code is pushed to the repository
+[✅] **CLI** Create a CLI for usage
 
-[] **CLI** Create a CLI for usage
+[✅] **Platform Specific Binaries** Create platform specific binaries for easy deployment
 
-[] **Platform Specific Binaries** Create platform specific binaries for easy deployment
-
-[] **Documentation** Write a detailed guide on how to use Deployr
+[✅] **Documentation** Write a detailed guide on how to use Deployr
 
 -^----V1 Release----^-
+
+[] **Github Actions** Create gh actions to automate the deployment process when new code is pushed to the repository
 
 [] **Docker** Dockerise the application for easy deployment
   
