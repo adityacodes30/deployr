@@ -1,6 +1,8 @@
 # Deployr 💾
 
-Deployr helps you host your Next.js application on your own aws ec2 instance, With just a few clicks, you can set up everything, from machine provisioning to serving your next application on your own domain. With github actions and CI/CD, you can automate the deployment process on every push and focus on building your application.
+Deployr helps you host your Next.js application on your own aws ec2 instance, With just a few clicks, you can set up everything, from machine provisioning to serving your next application on your own domain. 
+
+With github actions and CI/CD, you can automate the deployment process on every push and focus on building your application.
 
 Here is a video walkthrough / how to use Deployr: [Deployr Walkthrough](https://www.loom.com/share/8c7ca17efc78416d8bec92d46bc482ae?sid=10439ae0-bdd7-4ce3-ae1e-85ea4ef9da86)
 
@@ -211,11 +213,17 @@ V 1.0
 
 [✅] **Documentation** Write a detailed guide on how to use Deployr
 
--^----V1 Release----^-
+-^----V1.0.0 Release----^-
 
-[] **Github Actions** Create gh actions to automate the deployment process when new code is pushed to the repository
+[✅] **Github Actions** Create gh actions to automate the deployment process when new code is pushed to the repository
 
-[] **Docker** Dockerise the application for easy deployment
+-^----V1.1.0 Release----^-
+
+[] **Docker** Dockerise the application for windows users 
+
+[] **GUI** Add a supporting GUI for easy accesss
+
+[] **Build Auth** Add assymentric encryption and authentication for triggering the build process 
   
 ---
 
