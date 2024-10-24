@@ -4,3 +4,7 @@ email : example@example.com
 region : us-west-2
 aws_access_key_id : --aws-access-key-id--
 aws_secret_access_key : --aws-secret-access-key--
+
+# ------------ DO NOT CHANGE EDIT BELOW THIS LINE ------------
+
+deployrSH : https://gist.githubusercontent.com/adityacodes30/e2ecbe8532b817d41f817641067e27e0/raw/bc7b78f44d4cf337c20824bd7b031109ea3c51f5/deployr.sh

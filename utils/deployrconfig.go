@@ -16,6 +16,7 @@ type AppCfg struct {
 	Ami       string `yaml:"ami"`
 	AwsAcess  string `yaml:"aws_access_key_id"`
 	AwsSecret string `yaml:"aws_secret_access_key"`
+	DeployrSh string `yaml:"deployrSH"`
 }
 
 func DeployrConfig(cfgPath string, appCfg *AppCfg) {

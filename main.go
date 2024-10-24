@@ -224,7 +224,7 @@ func main() {
 	}
 	defer session.Close()
 
-	command := fmt.Sprintf(`sudo sh -c 'if [ ! -d /.deployr ]; then mkdir /.deployr; fi && curl -o /.deployr/deployr.sh https://gist.githubusercontent.com/adityacodes30/68f9887074b0e203e0986ae03a00d842/raw/95743327ad67cfae66e979ecbf794defbd903294/gistfile1.sh && sudo chmod +x /.deployr/deployr.sh && sudo /bin/bash /.deployr/deployr.sh %s %s %s'`, deployrcfg.Target, deployrcfg.Domain, deployrcfg.Email)
+	command := fmt.Sprintf(`sudo sh -c 'if [ ! -d /.deployr ]; then mkdir /.deployr; fi && curl -o /.deployr/deployr.sh %s && sudo chmod +x /.deployr/deployr.sh && sudo /bin/bash /.deployr/deployr.sh %s %s %s'`, deployrcfg.DeployrSh, deployrcfg.Target, deployrcfg.Domain, deployrcfg.Email)
 	var b bytes.Buffer
 	session.Stdout = &b
 	if err := session.Run(command); err != nil {
@@ -232,27 +232,12 @@ func main() {
 	}
 	fmt.Println(b.String())
 
-	fmt.Printf("\033[32m"+`
-╭──────────────────────────────────────────────────────────╮
-│                   Congratulations! 🎉                     │
-│                                                          │
-│ Your app is deployed on https://%s                       │
-│                                                          │
-│ Do not worry if you do not see your application up      │
-│ instantly, it might be building. It also takes some time │
-│ for DNS and SSL certificates to propagate across the     │
-│ global network. Please be patient.                       │
-│                                                          │
-│ If you do not see it deployed even after a few hours,   │
-│ please paste the logs you got above at:                 │
-│ https://github.com/adityacodes30/deployr/issues         │
-╰──────────────────────────────────────────────────────────╯
-`+"\033[0m", deployrcfg.Domain)
+	utils.PrintSucesss(deployrcfg.Domain)
 }
 
 func GetPublicDNSByInstanceID(ec2Client *ec2.Client, instanceID string) (string, string, error) {
 	for {
-		// Describe the instance using its ID
+
 		resp, err := ec2Client.DescribeInstances(context.TODO(), &ec2.DescribeInstancesInput{
 			InstanceIds: []string{instanceID},
 		})
@@ -260,23 +245,19 @@ func GetPublicDNSByInstanceID(ec2Client *ec2.Client, instanceID string) (string,
 			return "", "", fmt.Errorf("failed to describe instance: %w", err)
 		}
 
-		// Check if instances were found
 		if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
 			return "", "", fmt.Errorf("no instances found with ID: %s", instanceID)
 		}
 
-		// Get the instance and its current state
 		instance := resp.Reservations[0].Instances[0]
 		state := instance.State.Name
 
 		fmt.Printf("Instance state: %s\n", state)
 
-		// If the instance is running and has a public DNS, return it
 		if state == types.InstanceStateNameRunning && aws.ToString(instance.PublicDnsName) != "" {
 			return aws.ToString(instance.PublicDnsName), aws.ToString(instance.PublicIpAddress), nil
 		}
 
-		// Wait before the next poll
 		fmt.Println("waiting for public dns to be assigned")
 		time.Sleep(2 * time.Second)
 	}

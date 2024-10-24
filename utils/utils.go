@@ -213,3 +213,24 @@ func resolveWithDNS(domain string, resolver string) ([]string, error) {
 	}
 	return ips, nil
 }
+
+func PrintSucesss(domain string) {
+
+	fmt.Printf("\033[32m"+`
+╭──────────────────────────────────────────────────────────╮
+│                   Congratulations! 🎉                     │
+│                                                          │
+│ Your app is deployed on https://%s                       │
+│                                                          │
+│ Do not worry if you do not see your application up      │
+│ instantly, it might be building. It also takes some time │
+│ for DNS and SSL certificates to propagate across the     │
+│ global network. Please be patient.                       │
+│                                                          │
+│ If you do not see it deployed even after a few hours,   │
+│ please paste the logs you got above at:                 │
+│ https://github.com/adityacodes30/deployr/issues         │
+╰──────────────────────────────────────────────────────────╯
+`+"\033[0m", domain)
+
+}
