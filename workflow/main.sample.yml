@@ -1,0 +1,81 @@
+name: Deployr CI/CD
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+env:
+  DEPLOY_DOMAIN: https://<domain>
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project
+        id: build
+        run: |
+          if npm run build; then
+            echo "Build successful"
+          else
+            echo "Build failed"
+            exit 1
+          fi
+
+      - name: Trigger deployment and check status
+        id: trigger
+        if: success()
+        run: |
+          RESPONSE=$(curl -s -X POST "${{ env.DEPLOY_DOMAIN }}/deployr/deploy")
+          echo "Raw response: $RESPONSE"
+          
+          # Store the raw job ID
+          echo "job_id=${RESPONSE}" >> $GITHUB_OUTPUT
+          
+          if [ -z "$RESPONSE" ]; then
+            echo "Failed to get job ID"
+            exit 1
+          fi
+          echo "Successfully received job ID: $RESPONSE"
+          MAX_ATTEMPTS=100  # 5 minutes (100 * 3 seconds)
+          attempt=1
+          
+          while [ $attempt -le $MAX_ATTEMPTS ]; do
+            STATUS_URL="${{ env.DEPLOY_DOMAIN }}/deployr/status?job_id=$RESPONSE"
+            echo "Checking status at: $STATUS_URL"
+            
+            STATUS=$(curl -s -f "$STATUS_URL" || echo "error")
+            echo "Attempt $attempt: Status is $STATUS"
+            
+            if [ "$STATUS" = "completed" ]; then
+              echo "Deployment completed successfully!"
+              exit 0
+            elif [ "$STATUS" = "failed" ]; then
+              echo "Deployment failed!"
+              exit 1
+            elif [ "$STATUS" = "error" ]; then
+              echo "Error fetching status"
+              exit 1
+            fi
+            
+            if [ "$STATUS" != "running" ]; then
+              echo "Unexpected status: $STATUS"
+            fi
+            
+            attempt=$((attempt + 1))
+            sleep 3
+          done
+          
+          echo "Timeout: Deployment took too long"
+          exit 1
+          
