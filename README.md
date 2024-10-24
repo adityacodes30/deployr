@@ -1,6 +1,6 @@
 # Deployr 💾
 
-Deployr helps you host your Next.js application on your own aws ec2 instance, With just a few clicks, you can set up everything, from machine provisioning to serving your next application on your own domain.
+Deployr helps you host your Next.js application on your own aws ec2 instance, With just a few clicks, you can set up everything, from machine provisioning to serving your next application on your own domain. With github actions and CI/CD, you can automate the deployment process on every push and focus on building your application.
 
 Here is a video walkthrough / how to use Deployr: [Deployr Walkthrough](https://www.loom.com/share/8c7ca17efc78416d8bec92d46bc482ae?sid=10439ae0-bdd7-4ce3-ae1e-85ea4ef9da86)
 
@@ -8,7 +8,7 @@ Here is a video walkthrough / how to use Deployr: [Deployr Walkthrough](https://
 
 # How to Deployr Your App 🚀
 
-v1.0.0 is here 🎉
+v1.1.0 is here - CI/CD is now enabled 🎉
 
 How to use Deployr to host your Next.js application on your own AWS EC2 instance:
 
@@ -16,22 +16,22 @@ How to use Deployr to host your Next.js application on your own AWS EC2 instance
 
 #### Linux (Intel/AMD64):
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-linux-amd64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-linux-amd64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 #### macOS (ARM/M1)
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-macos-arm64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-macos-arm64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 #### Linux (ARM64):
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-linux-arm64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-linux-arm64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 #### macOS (Intel/AMD64):
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.0.0/deployr-macos-amd64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-macos-amd64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 ### Step 2: Test the installation 
@@ -95,6 +95,21 @@ You will get your public IP in your terminal, go to your domain hosting provider
 ### Step 6: Your project is Deployed 
 
 You can now access your project on your domain after a few minutes ( Depending on the buildtime of your project )
+
+### Step 7: CI/CD
+
+You can now automate the deployment process with CI/CD. Just copy the main.yml and add it to the .github/workflows folder in your local repository.
+
+You can find the main.yml file here : [main.yml](https://github.com/adityacodes30/deployr/blob/main/workflow/main.sample.yml)
+
+Create a file named main.yml in the .github/workflows folder and paste the contents of the main.sample.yml file in it. Add your domain on line 7 
+
+for example :
+
+```yaml
+  DEPLOY_DOMAIN: https://example.com
+```
+
 
 ## If you want to build 
 
