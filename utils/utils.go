@@ -19,13 +19,30 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func Keygen() (string, string, string) {
-	deployrdir := os.Getenv("HOME") + "/.deployr"
-	tempKeyDir := deployrdir + "/temp"
-	savePrivateFileTo := deployrdir + "/temp/key"
-	savePublicFileTo := deployrdir + "/temp/key.pub"
-	bitSize := 4096
+func Keygen(mode string, domain string) (string, string, string) {
+	var deployrdir string
+	var tempKeyDir string
+	var savePrivateFileTo string
+	var savePublicFileTo string
+	var domainDirPrefix string
 
+	deployrdir = os.Getenv("HOME") + "/.deployr"
+
+	domainDirPrefix = strings.Replace(domain, ".com", "", 1)
+
+	if mode == "ssh" {
+		tempKeyDir = deployrdir + "/" + domainDirPrefix + "/temp"
+		savePrivateFileTo = tempKeyDir + "/key"
+		savePublicFileTo = tempKeyDir + "/key.pub"
+	} else if mode == "auth" {
+		tempKeyDir = deployrdir + "/" + domainDirPrefix + "/auth"
+		savePrivateFileTo = tempKeyDir + "/key"
+		savePublicFileTo = tempKeyDir + "/key.pub"
+	} else {
+		log.Fatal("Unsupported mode: ", mode)
+	}
+
+	bitSize := 4096
 	err := os.MkdirAll(deployrdir, 0755)
 	if err != nil {
 		log.Fatal("Failed to create .deployr directory: ", err)
@@ -233,4 +250,13 @@ func PrintSucesss(domain string) {
 ╰──────────────────────────────────────────────────────────╯
 `+"\033[0m", domain)
 
+}
+
+func readFile(filepath string) string {
+	content, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		log.Printf("Error reading %s: %v", filepath, err)
+		return ""
+	}
+	return string(content)
 }

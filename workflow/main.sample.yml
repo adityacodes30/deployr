@@ -4,7 +4,8 @@ on:
     branches: [ main ]
   workflow_dispatch:
 env:
-  DEPLOY_DOMAIN: https://<domain>
+  DEPLOY_DOMAIN: https://<domain>  
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -32,24 +33,33 @@ jobs:
             exit 1
           fi
 
-      - name: Trigger deployment and check status
+      - name: Generate signature and trigger deployment
         id: trigger
         if: success()
         run: |
-          RESPONSE=$(curl -s -X POST "${{ env.DEPLOY_DOMAIN }}/deployr/deploy")
-          echo "Raw response: $RESPONSE"
+          MESSAGE="deployr" 
+  
+          PRIVATE_KEY="${{ secrets.DEPLOYR_PRIVKEY }}"
+          SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -sign <(echo "$PRIVATE_KEY") -binary | base64)
           
-          # Store the raw job ID
-          echo "job_id=${RESPONSE}" >> $GITHUB_OUTPUT
+          PAYLOAD=$(jq -n --arg message "$MESSAGE" --arg signature "$SIGNATURE" \
+            '{message: $message, signature: $signature}')
+          
+          RESPONSE=$(curl -s -X POST "${{ env.DEPLOY_DOMAIN }}/deployr/deploy" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+          echo "Raw response: $RESPONSE"
           
           if [ -z "$RESPONSE" ]; then
             echo "Failed to get job ID"
             exit 1
           fi
           echo "Successfully received job ID: $RESPONSE"
+          
           MAX_ATTEMPTS=100  # 5 minutes (100 * 3 seconds)
           attempt=1
           
+          # Poll for job status
           while [ $attempt -le $MAX_ATTEMPTS ]; do
             STATUS_URL="${{ env.DEPLOY_DOMAIN }}/deployr/status?job_id=$RESPONSE"
             echo "Checking status at: $STATUS_URL"
@@ -78,4 +88,3 @@ jobs:
           
           echo "Timeout: Deployment took too long"
           exit 1
-          
