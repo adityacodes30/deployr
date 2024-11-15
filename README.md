@@ -2,15 +2,17 @@
 
 Deployr helps you host your Next.js application on your own aws ec2 instance, With just a few clicks, you can set up everything, from machine provisioning to serving your next application on your own domain. 
 
-With github actions and CI/CD, you can automate the deployment process on every push and focus on building your application.
+With github actions and CI/CD, you can automate the deployment process on every push and focus on building your application. Also your deployments are secure and only you can trigger CI/CD builds. You can deploy as many applications as you want across multiple instances.
 
 Here is a video walkthrough / how to use Deployr: [Deployr Walkthrough](https://www.loom.com/share/8c7ca17efc78416d8bec92d46bc482ae?sid=10439ae0-bdd7-4ce3-ae1e-85ea4ef9da86)
+
+(This guide will be updated soon, Readme is sufficient to get you started)
 
 ---
 
 # How to Deployr Your App 🚀
 
-v1.1.0 is here - CI/CD is now enabled 🎉
+v1.2.0 just arrived - Deployments are now authenticated, more interactive cli and multiple deployments support are now here 🎉
 
 How to use Deployr to host your Next.js application on your own AWS EC2 instance:
 
@@ -18,22 +20,22 @@ How to use Deployr to host your Next.js application on your own AWS EC2 instance
 
 #### Linux (Intel/AMD64):
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-linux-amd64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.2.0/deployr-linux-amd64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 #### macOS (ARM/M1)
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-macos-arm64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.2.0/deployr-macos-arm64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 #### Linux (ARM64):
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-linux-arm64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.2.0/deployr-linux-arm64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 #### macOS (Intel/AMD64):
 ```bash
-sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.1.0/deployr-macos-amd64 && sudo chmod +x /usr/local/bin/deployr
+sudo curl -L -o /usr/local/bin/deployr https://github.com/adityacodes30/deployr/releases/download/v1.2.0/deployr-macos-amd64 && sudo chmod +x /usr/local/bin/deployr
 ```
 
 ### Step 2: Test the installation 
@@ -46,7 +48,11 @@ You should see the version of the deployr you just installed
 
 ### Step 3: Create a config.yml file 
 
-Download the `config.example.yml` file and obtain your AWS credentials and the github repo of your next app to be deployr(ed) 
+Run the following command to create a config.yml file in your current directory
+
+```bash
+deployr init
+```
 
 Sign into aws and make a IAM user with the following policy attached: 
 
@@ -80,14 +86,26 @@ Sign into aws and make a IAM user with the following policy attached:
 
 Then obtain and add the credentials of the user you just created as well as the github repo of your next app to be deployr(ed) to the config.example.yml 
 
-Then rename `config.example.yml` ---> `config.yml`
-
 Here is a short [guide](https://www.loom.com/share/cf21a3c2212b45f887e46d73544dabd6?sid=00f3bd28-689c-4480-931d-bd5c4cca247b) on how to do that 
 
 ### Step 4: Run the deployr command 
 
 ```bash
+deployr config.yml
+```
+
+or
+
+```bash
 deployr <path-to-config.yml>
+```
+
+if you have the config.yml in a different directory
+
+you can also see the help menu by running 
+
+```bash
+deployr -help
 ```
 
 ### Step 5: Point your domain 
@@ -104,7 +122,7 @@ You can now automate the deployment process with CI/CD. Just copy the main.yml a
 
 You can find the main.yml file here : [main.yml](https://github.com/adityacodes30/deployr/blob/main/workflow/main.sample.yml)
 
-Create a file named main.yml in the .github/workflows folder and paste the contents of the main.sample.yml file in it. Add your domain on line 7 
+Create a file named main.yml in the .github/workflows folder and paste the contents of the main.sample.yml file in it. Add your domain on line 7 and the key you just received in value field after running deployr in the github repository secrets with the name [DEPLOYR_PRIVKEY] (https://docs.github.com/en/actions/security-for-github-actions/security-guides using-secrets-in-github-actions#creating-secrets-for-a-repository)
 
 for example :
 
@@ -113,10 +131,10 @@ for example :
 ```
 
 
-## If you want to build 
+## If you want to build and contribute to the project
 
 ### Step 1: Clone the Project  
-Start by cloning the Deployr repository to your local machine:
+Start by forking and  cloning the Deployr repository to your local machine:
 
 ```bash
 git clone <your-deployr-repo-url>
@@ -189,7 +207,7 @@ You can now access your project on your domain after a few minutes ( Depending o
 
 ### Development progress
 
-This checklist tracks the current state of tasks. There will be a hosted build for all platforms soon. Currently you can build from source and use it 
+This checklist tracks the current state of tasks.
 
 V 1.0
 
@@ -213,17 +231,25 @@ V 1.0
 
 [✅] **Documentation** Write a detailed guide on how to use Deployr
 
--^----V1.0.0 Release----^-
+-^----v1.0.0 Release----^-
 
 [✅] **Github Actions** Create gh actions to automate the deployment process when new code is pushed to the repository
 
--^----V1.1.0 Release----^-
+-^----v1.1.0 Release----^-
+
+[✅] **Build Auth** Add assymentric encryption and authentication for triggering the build process 
+
+[✅] **Multiple Deployments** Add support for multiple deployments (on seperate instances)
+
+[✅] **Interactive CLI** Add an interactive CLI for easy configuration
+
+
+-^----v1.2.0 Release----^-
 
 [] **Docker** Dockerise the application for windows users 
 
 [] **GUI** Add a supporting GUI for easy accesss
 
-[] **Build Auth** Add assymentric encryption and authentication for triggering the build process 
   
 ---
 
