@@ -8,15 +8,20 @@ GO_EXECUTABLE="server"
 DEPLOY_SCRIPT="deployr-daemon.sh"
 
 
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <TARGET_NEXTJS_REPO_URL> <DOMAIN> <EMAIL>"
+i# Variables
+if [ "$#" -ne 4 ]; then
+    echo "Usage: $0 <TARGET_NEXTJS_REPO_URL> <DOMAIN> <EMAIL> <DEPLOYR_PUBKEY>"
     exit 1
 fi
-
 
 TARGET_NEXTJS_REPO_URL="$1"
 DOMAIN="$2"
 EMAIL="$3"
+DEPLOYR_PUBKEY="$4"
+
+
+echo "Test passed - DEPLOYR_PUBKEY is set and persistent"
+echo "Current value: $DEPLOYR_PUBKEY"
 
 echo "Updating system..."
 sudo yum update -y
@@ -28,6 +33,36 @@ sudo yum install -y nginx nodejs npm certbot python3-certbot-nginx git
 echo "Starting Nginx..."
 sudo systemctl start nginx
 sudo systemctl enable nginx
+
+sudo sh -c "echo 'DEPLOYR_PUBKEY=\"$DEPLOYR_PUBKEY\"' >> /etc/environment"
+
+# Load it for current session
+export DEPLOYR_PUBKEY="$DEPLOYR_PUBKEY"
+
+echo "Testing DEPLOYR_PUBKEY..."
+
+# Test 1: Check if variable is set
+if [ -z "$DEPLOYR_PUBKEY" ]; then
+    echo "Error: DEPLOYR_PUBKEY is not set"
+    exit 1
+fi
+
+if [ "$DEPLOYR_PUBKEY" = "$4" ]; then
+    echo "✅ DEPLOYR_PUBKEY is set correctly"
+else
+    echo "Error: DEPLOYR_PUBKEY does not match the input value"
+    echo "Expected: $4"
+    echo "Got: $DEPLOYR_PUBKEY"
+    exit 1
+fi
+
+
+if grep -q "DEPLOYR_PUBKEY=\"$4\"" /etc/environment; then
+    echo "DEPLOYR_PUBKEY is properly set in /etc/environment"
+else
+    echo "Error: DEPLOYR_PUBKEY not found in /etc/environment"
+    exit 1
+fi
 
 echo "Updating Nginx configuration to proxy to the application..."
 sudo tee "$NGINX_CONF_PATH" > /dev/null <<EOF

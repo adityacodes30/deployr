@@ -181,7 +181,7 @@ go build main.go
 ### Step 5: Point your domain 
 
 You will get your public IP in your terminal, go to your domain hosting provider and point your domain to that IP 
-
+ 
 ### Step 6: Your project is Deployed 
 
 You can now access your project on your domain after a few minutes ( Depending on the buildtime of your project )

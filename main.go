@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -23,29 +22,14 @@ import (
 
 func main() {
 
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: deployr <config.yml>")
-		os.Exit(1)
-	}
+	stop, clioutput := utils.Cli(os.Args)
 
-	configFilePath := os.Args[1]
-
-	if configFilePath == "-v" {
-		fmt.Println("Deployr on v1.0")
+	if stop {
+		fmt.Println(clioutput)
 		return
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		fmt.Println("Error getting current working directory:", err)
-		os.Exit(1)
-	}
-
-	if !filepath.IsAbs(configFilePath) {
-		configFilePath = filepath.Join(cwd, configFilePath)
-	}
-
-	fmt.Println("Using config file at:", configFilePath)
+	configFilePath := clioutput
 
 	var deployrcfg utils.AppCfg
 
@@ -64,59 +48,76 @@ func main() {
 
 	svc := ec2.NewFromConfig(cfg)
 
-	// create security group
-	createGroupOutput, err := svc.CreateSecurityGroup(context.TODO(), &ec2.CreateSecurityGroupInput{
-		GroupName:   aws.String("deployr-sg"),
-		Description: aws.String("Security group for deployr instance with SSH, HTTP, and HTTPS access"),
+	describeGroupOutput, describeGroupOutputErr := svc.DescribeSecurityGroups(context.TODO(), &ec2.DescribeSecurityGroupsInput{
+		GroupNames: []string{"deployr-sg"},
 	})
-	if err != nil {
-		log.Fatalf("Failed to create security group: %v", err)
+
+	if describeGroupOutputErr != nil {
+		log.Fatalf("Failed to describe security group: %v", describeGroupOutputErr)
 	}
 
-	securityGroupID := aws.ToString(createGroupOutput.GroupId)
-	fmt.Printf("Created security group with ID: %s\n", securityGroupID)
+	var securityGroupID string
 
-	// Inbound rules
-	_, err = svc.AuthorizeSecurityGroupIngress(context.TODO(), &ec2.AuthorizeSecurityGroupIngressInput{
-		GroupId: aws.String(securityGroupID),
-		IpPermissions: []types.IpPermission{
-			{
-				IpProtocol: aws.String("tcp"),
-				FromPort:   aws.Int32(22),
-				ToPort:     aws.Int32(22),
-				IpRanges: []types.IpRange{
-					{
-						CidrIp:      aws.String("0.0.0.0/0"),
-						Description: aws.String("Allow SSH access from anywhere"),
+	if describeGroupOutputErr == nil && len(describeGroupOutput.SecurityGroups) > 0 {
+		// Security group exists, store the GroupId
+		securityGroupID = aws.ToString(describeGroupOutput.SecurityGroups[0].GroupId)
+		fmt.Printf("Security group 'deployr-sg' already exists with ID: %s\n", securityGroupID)
+	} else {
+		// Security group does not exist, create it
+		createGroupOutput, createGroupOutputerr := svc.CreateSecurityGroup(context.TODO(), &ec2.CreateSecurityGroupInput{
+			GroupName:   aws.String("deployr-sg"),
+			Description: aws.String("Security group for deployr instance with SSH, HTTP, and HTTPS access"),
+		})
+		if createGroupOutputerr != nil {
+			log.Fatalf("Failed to create security group: %v", createGroupOutputerr)
+		}
+		securityGroupID = aws.ToString(createGroupOutput.GroupId)
+		fmt.Printf("Created security group with ID: %s\n", securityGroupID)
+
+		// Inbound rules
+
+		_, err := svc.AuthorizeSecurityGroupIngress(context.TODO(), &ec2.AuthorizeSecurityGroupIngressInput{
+			GroupId: aws.String(securityGroupID),
+			IpPermissions: []types.IpPermission{
+				{
+					IpProtocol: aws.String("tcp"),
+					FromPort:   aws.Int32(22),
+					ToPort:     aws.Int32(22),
+					IpRanges: []types.IpRange{
+						{
+							CidrIp:      aws.String("0.0.0.0/0"),
+							Description: aws.String("Allow SSH access from anywhere"),
+						},
+					},
+				},
+				{
+					IpProtocol: aws.String("tcp"),
+					FromPort:   aws.Int32(80),
+					ToPort:     aws.Int32(80),
+					IpRanges: []types.IpRange{
+						{
+							CidrIp:      aws.String("0.0.0.0/0"),
+							Description: aws.String("Allow HTTP traffic from anywhere"),
+						},
+					},
+				},
+				{
+					IpProtocol: aws.String("tcp"),
+					FromPort:   aws.Int32(443),
+					ToPort:     aws.Int32(443),
+					IpRanges: []types.IpRange{
+						{
+							CidrIp:      aws.String("0.0.0.0/0"),
+							Description: aws.String("Allow HTTPS traffic from anywhere"),
+						},
 					},
 				},
 			},
-			{
-				IpProtocol: aws.String("tcp"),
-				FromPort:   aws.Int32(80),
-				ToPort:     aws.Int32(80),
-				IpRanges: []types.IpRange{
-					{
-						CidrIp:      aws.String("0.0.0.0/0"),
-						Description: aws.String("Allow HTTP traffic from anywhere"),
-					},
-				},
-			},
-			{
-				IpProtocol: aws.String("tcp"),
-				FromPort:   aws.Int32(443),
-				ToPort:     aws.Int32(443),
-				IpRanges: []types.IpRange{
-					{
-						CidrIp:      aws.String("0.0.0.0/0"),
-						Description: aws.String("Allow HTTPS traffic from anywhere"),
-					},
-				},
-			},
-		},
-	})
-	if err != nil {
-		log.Fatalf("Failed to add security group rules: %v", err)
+		})
+
+		if err != nil {
+			log.Fatalf("Failed to add security group rules: %v", err)
+		}
 	}
 
 	runInstanceResp, instanceErr := svc.RunInstances(context.TODO(),
@@ -168,7 +169,7 @@ func main() {
 
 	icsvc := ec2instanceconnect.NewFromConfig(cfg)
 
-	pubkey, _, privKeyPath := utils.Keygen()
+	pubkey, _, privKeyPath := utils.Keygen("ssh", deployrcfg.Domain)
 
 	respp, erroricsvc := icsvc.SendSSHPublicKey(context.TODO(), &ec2instanceconnect.SendSSHPublicKeyInput{
 		InstanceId:     instanceId,
@@ -224,7 +225,9 @@ func main() {
 	}
 	defer session.Close()
 
-	command := fmt.Sprintf(`sudo sh -c 'if [ ! -d /.deployr ]; then mkdir /.deployr; fi && curl -o /.deployr/deployr.sh %s && sudo chmod +x /.deployr/deployr.sh && sudo /bin/bash /.deployr/deployr.sh %s %s %s'`, deployrcfg.DeployrSh, deployrcfg.Target, deployrcfg.Domain, deployrcfg.Email)
+	daemonPub, daemonPriv, _ := utils.Keygen("auth", deployrcfg.Domain)
+
+	command := fmt.Sprintf(`sudo sh -c 'if [ ! -d /.deployr ]; then mkdir /.deployr; fi && curl -o /.deployr/deployr.sh %s && sudo chmod +x /.deployr/deployr.sh && sudo /bin/bash /.deployr/deployr.sh %s %s %s "%s"'`, deployrcfg.DeployrSh, deployrcfg.Target, deployrcfg.Domain, deployrcfg.Email, daemonPub)
 	var b bytes.Buffer
 	session.Stdout = &b
 	if err := session.Run(command); err != nil {
@@ -233,6 +236,8 @@ func main() {
 	fmt.Println(b.String())
 
 	utils.PrintSucesss(deployrcfg.Domain)
+
+	fmt.Println(`Use this private key as the github secret:` + " \n" + daemonPriv)
 }
 
 func GetPublicDNSByInstanceID(ec2Client *ec2.Client, instanceID string) (string, string, error) {
